@@ -635,6 +635,38 @@
             margin-top: 4px !important;
         }
         
+        /* Only change button text for unanswered calls */
+        .activity-view .call-btn::after {
+            content: 'Call';
+            margin-left: 5px;  /* Add space between icon and text */
+        }
+        
+        .unanswered-view .call-icon::after {
+            content: 'Call Again' !important;
+            margin-left: 5px;  /* Add space between icon and text */
+        }
+
+        /* Make sure text is visible */
+        .call-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Only add text for unanswered calls button */
+        .call-btn {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .call-icon::after {
+            content: '';
+            margin-left: 5px;
+        }
+
+        .unanswered-view .call-icon::after {
+            content: 'Call Again' !important;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -1369,7 +1401,7 @@
             }
         }
 
-        // Add this function to handle WhatsApp clicks
+        // Function to handle WhatsApp clicks with dynamic greeting and pre-typed message
         async function sendWhatsApp(number, key) {
             try {
                 const telecallerEmail = localStorage.getItem('telecallerEmail');
@@ -1391,12 +1423,53 @@
                     `;
                 }
 
-                // Format number for WhatsApp (remove any spaces or special characters)
-                const formattedNumber = number.replace(/[^0-9]/g, '');
+                // Get current hour for time-based greeting
+                const currentHour = new Date().getHours();
+                let timeGreeting = "Hello";
                 
-                // Open WhatsApp
-                window.open(`https://wa.me/${formattedNumber}`, '_blank');
+                if (currentHour >= 5 && currentHour < 12) {
+                    timeGreeting = "Good morning";
+                } else if (currentHour >= 12 && currentHour < 17) {
+                    timeGreeting = "Good afternoon";
+                } else {
+                    timeGreeting = "Good evening";
+                }
 
+                // Format number for WhatsApp (remove any spaces or special characters)
+                let formattedNumber = number.replace(/[^0-9]/g, '');
+                
+                // Add +91 prefix if not already present
+                if (!formattedNumber.startsWith('91')) {
+                    formattedNumber = '91' + formattedNumber;
+                }
+                
+                // Prepare message - using explicit line breaks for WhatsApp
+                const message = `${timeGreeting} Sir/Mam,
+
+Thank you for your interest in our premium JB INFRA Open Plots project!
+
+You can view our project photos and videos here:
+https://drive.google.com/drive/folders/12aGl2wjwqGFwaA9qDCu-suHGzgWQi6CI
+
+These images/videos showcase:
+• Beautifully developed infrastructure
+• Wide internal roads with streetlights
+• Lush green surroundings
+• Nearby amenities and landmarks
+• Actual plot layout and dimensions
+
+Would you like to schedule a site visit this weekend? I can arrange transportation if needed. (*FREE SITE VISIT*)
+
+Thank you,
+JB INFRA
+987654321`;
+                
+                // Use correct URL encoding for WhatsApp
+                const encodedMessage = encodeURIComponent(message);
+                
+                // Open WhatsApp with properly constructed URL
+                window.location.href = `https://api.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
+                
                 // Simulate message read after 2 seconds
                 setTimeout(async () => {
                     await db.ref(`${telecallerName}/${key}`).update({
@@ -1405,7 +1478,7 @@
                     if (statusElement) {
                         statusElement.innerHTML = `
                             <svg class="tick-icon read" viewBox="0 0 16 15">
-                                <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                                <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.366 0 0 0-.063-.51z"/>
                             </svg>
                         `;
                     }
@@ -1425,6 +1498,68 @@
             }
             return number;
         }
+
+        // Add a listener for number removals
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.removedNodes.length > 0) {
+                    // Count remaining numbers in the list
+                    const remainingNumbers = document.querySelectorAll('.call-item').length;
+                    // Update header count instantly
+                    document.getElementById('headerCount').textContent = `${remainingNumbers} Numbers Left`;
+                }
+            });
+        });
+
+        // Start observing the call list for changes
+        document.addEventListener('DOMContentLoaded', () => {
+            const callList = document.getElementById('callList');
+            observer.observe(callList, { childList: true, subtree: true });
+        });
+
+        // Add sorting functionality for activity view
+        function convertToDateTime(dateTimeStr) {
+            // Split date and time
+            const [datePart, timePart, meridian] = dateTimeStr.match(/(\d{2}\/\d{2}\/\d{2}) (\d{1,2}:\d{2})(?: )?(pm|PM|am|AM)?/).slice(1);
+            
+            // Convert date to YYYY/MM/DD format
+            const [day, month, year] = datePart.split('/');
+            const fullYear = `20${year}`;
+            
+            // Convert time to 24-hour format
+            let [hours, minutes] = timePart.split(':');
+            if ((meridian?.toLowerCase() === 'pm') && hours !== '12') {
+                hours = parseInt(hours) + 12;
+            } else if ((meridian?.toLowerCase() === 'am') && hours === '12') {
+                hours = '00';
+            }
+            
+            return new Date(`${fullYear}/${month}/${day} ${hours}:${minutes}`);
+        }
+
+        // Add this to existing showActivity function's callsArray processing
+        document.addEventListener('DOMContentLoaded', () => {
+            const originalShowActivity = window.showActivity;
+            window.showActivity = async function(status) {
+                await originalShowActivity(status);
+                
+                // After the original function runs, sort the displayed calls
+                const callList = document.getElementById('callList');
+                const callItems = Array.from(callList.querySelectorAll('.call-item'));
+                
+                // Sort by date/time (most recent first)
+                callItems.sort((a, b) => {
+                    const dateTimeA = a.querySelector('.call-datetime').textContent;
+                    const dateTimeB = b.querySelector('.call-datetime').textContent;
+                    return convertToDateTime(dateTimeB) - convertToDateTime(dateTimeA);
+                });
+                
+                // Re-append in sorted order
+                callItems.forEach(item => callList.appendChild(item));
+                
+                return;
+            };
+        });
     </script>
 </body>
 </html> 
