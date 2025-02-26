@@ -1312,7 +1312,7 @@
                                 <div class="tick-status" id="status-${call.key}">
                                     ${call.whatsappStatus ? `
                                         <svg class="tick-icon ${call.whatsappStatus === 'read' ? 'read' : ''}" viewBox="0 0 16 15">
-                                            <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                                            <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.366 0 0 0-.063-.51z"/>
                                         </svg>
                                     ` : ''}
                                 </div>
@@ -1435,12 +1435,24 @@
                     timeGreeting = "Good evening";
                 }
 
-                // Format number for WhatsApp (remove any spaces or special characters)
-                let formattedNumber = number.replace(/[^0-9]/g, '');
+                // Properly format number for WhatsApp
+                let cleanNumber = number.replace(/\D/g, '');  // Remove all non-digits
                 
-                // Add +91 prefix if not already present
-                if (!formattedNumber.startsWith('91')) {
-                    formattedNumber = '91' + formattedNumber;
+                // Ensure proper phone number format: Check if exactly 10 digits, or if not 10 digits but starts with 91
+                let formattedNumber;
+                if (cleanNumber.length === 10) {
+                    // Standard 10-digit Indian number - add 91 prefix
+                    formattedNumber = '91' + cleanNumber;
+                } else if (cleanNumber.length === 12 && cleanNumber.startsWith('91')) {
+                    // Already has 91 prefix - use as is
+                    formattedNumber = cleanNumber;
+                } else if (cleanNumber.length > 10) {
+                    // Handle other cases - extract last 10 digits and add 91
+                    const last10Digits = cleanNumber.slice(-10);
+                    formattedNumber = '91' + last10Digits;
+                } else {
+                    // Any other case - use as is
+                    formattedNumber = cleanNumber;
                 }
                 
                 // Prepare message - using explicit line breaks for WhatsApp
