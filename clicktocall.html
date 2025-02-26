@@ -1293,6 +1293,12 @@
                 const callListHtml = callsArray.map(call => `
                     <div class="call-item" data-number="${call.number}">
                         <div class="number-info">
+                            <div style="text-align: left; margin-bottom: 5px;">
+                                <span style="background: black; padding: 4px 7px; border-radius: 15px; font-size: 10px; color: white; font-weight: bold;">
+                                    <span style="display: inline-block; width: 8px; height: 8px; background: red; border-radius: 50%; margin-right: 2px;"></span>
+                                    ${call.source || 'Click to Call'}
+                                </span>
+                            </div>
                             <div class="phone-number">${maskPhoneNumber(call.number, call.status, true)}</div>
                             <div class="call-datetime">${call.dateTime || ''}</div>
                         </div>
