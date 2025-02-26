@@ -1418,7 +1418,7 @@
                 if (statusElement) {
                     statusElement.innerHTML = `
                         <svg class="tick-icon" viewBox="0 0 16 15">
-                            <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                            <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.366 0 0 0-.063-.51z"/>
                         </svg>
                     `;
                 }
@@ -1517,47 +1517,67 @@ JB INFRA
             observer.observe(callList, { childList: true, subtree: true });
         });
 
-        // Add sorting functionality for activity view
+        // Add this function to sort calls by recency
         function convertToDateTime(dateTimeStr) {
-            // Split date and time
-            const [datePart, timePart, meridian] = dateTimeStr.match(/(\d{2}\/\d{2}\/\d{2}) (\d{1,2}:\d{2})(?: )?(pm|PM|am|AM)?/).slice(1);
+            if (!dateTimeStr) return new Date(0);
             
-            // Convert date to YYYY/MM/DD format
-            const [day, month, year] = datePart.split('/');
-            const fullYear = `20${year}`;
-            
-            // Convert time to 24-hour format
-            let [hours, minutes] = timePart.split(':');
-            if ((meridian?.toLowerCase() === 'pm') && hours !== '12') {
-                hours = parseInt(hours) + 12;
-            } else if ((meridian?.toLowerCase() === 'am') && hours === '12') {
-                hours = '00';
+            try {
+                // Handle various date formats
+                const parts = dateTimeStr.trim().split(' ');
+                const datePart = parts[0];
+                const timePart = parts[1] || '';
+                const meridianPart = parts[2] || '';
+                
+                // Parse date DD/MM/YY
+                const [day, month, year] = datePart.split('/').map(num => parseInt(num, 10));
+                const fullYear = 2000 + year;
+                
+                // Parse time HH:MM
+                let [hours, minutes] = timePart.split(':').map(num => parseInt(num, 10));
+                
+                // Handle AM/PM
+                if (meridianPart && meridianPart.toLowerCase() === 'pm' && hours < 12) {
+                    hours += 12;
+                } else if (meridianPart && meridianPart.toLowerCase() === 'am' && hours === 12) {
+                    hours = 0;
+                }
+                
+                return new Date(fullYear, month - 1, day, hours || 0, minutes || 0);
+            } catch (e) {
+                console.error('Date parsing error:', e);
+                return new Date(0);
             }
-            
-            return new Date(`${fullYear}/${month}/${day} ${hours}:${minutes}`);
         }
 
-        // Add this to existing showActivity function's callsArray processing
+        // Add this to fix activity sorting
         document.addEventListener('DOMContentLoaded', () => {
+            // Store original showActivity function
             const originalShowActivity = window.showActivity;
+            
+            // Override with sorting functionality
             window.showActivity = async function(status) {
                 await originalShowActivity(status);
                 
-                // After the original function runs, sort the displayed calls
+                // Now sort the list that was just loaded
                 const callList = document.getElementById('callList');
                 const callItems = Array.from(callList.querySelectorAll('.call-item'));
                 
-                // Sort by date/time (most recent first)
-                callItems.sort((a, b) => {
-                    const dateTimeA = a.querySelector('.call-datetime').textContent;
-                    const dateTimeB = b.querySelector('.call-datetime').textContent;
-                    return convertToDateTime(dateTimeB) - convertToDateTime(dateTimeA);
-                });
-                
-                // Re-append in sorted order
-                callItems.forEach(item => callList.appendChild(item));
-                
-                return;
+                if (callItems.length > 0) {
+                    // Sort by date and time (most recent first)
+                    callItems.sort((a, b) => {
+                        const dateTimeA = a.querySelector('.call-datetime')?.textContent || '';
+                        const dateTimeB = b.querySelector('.call-datetime')?.textContent || '';
+                        
+                        const dateA = convertToDateTime(dateTimeA);
+                        const dateB = convertToDateTime(dateTimeB);
+                        
+                        return dateB - dateA;  // Most recent first
+                    });
+                    
+                    // Clear and re-append in sorted order
+                    callList.innerHTML = '';
+                    callItems.forEach(item => callList.appendChild(item));
+                }
             };
         });
     </script>
